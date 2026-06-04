@@ -46,18 +46,20 @@ class CesiumViewer {
     })
   }
 
+  private bloomStage: Cesium.PostProcessStage | null = null
+
   private initPostEffects() {
     if (!this.viewer) return
     const scene = this.viewer.scene
 
-    const bloom = new Cesium.BloomEffect({
+    this.bloomStage = Cesium.PostProcessStageLibrary.createBloomStage({
       enabled: true,
       glowOnly: false,
       threshold: 0.4,
       intensity: 1.5,
       blurStepSize: 1.0
     })
-    ;(scene as any).postProcessStages.add(bloom)
+    scene.postProcessStages.add(this.bloomStage)
 
     const fog = scene.fog
     fog.enabled = true
@@ -468,7 +470,9 @@ class CesiumViewer {
 
     switch (effect) {
       case 'bloom':
-        scene.postProcessStages.bloom.enabled = enabled
+        if (this.bloomStage) {
+          this.bloomStage.enabled = enabled
+        }
         break
       case 'fog':
         scene.fog.enabled = enabled
