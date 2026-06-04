@@ -9,6 +9,7 @@
           </span>
         </template>
         <el-radio-group v-model="baseMapType" size="small" @change="handleBaseMapChange">
+          <el-radio-button label="osm_img">OSM影像</el-radio-button>
           <el-radio-button label="tianditu_img">天地图影像</el-radio-button>
           <el-radio-button label="tianditu_vec">天地图矢量</el-radio-button>
           <el-radio-button label="gaode_img">高德影像</el-radio-button>

@@ -4,7 +4,7 @@ import type { BaseMapType, MapState, PlotInfo, BuildingInfo } from '@/types'
 
 export const useMapStore = defineStore('map', () => {
   const state = ref<MapState>({
-    currentBaseMap: 'tianditu_img',
+    currentBaseMap: 'osm_img',
     terrainEnabled: true,
     buildingsVisible: true,
     plotsVisible: true,

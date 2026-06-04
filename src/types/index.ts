@@ -58,7 +58,7 @@ export interface BufferAnalysisResult {
   roads: RoadNetwork[]
 }
 
-export type BaseMapType = 'tianditu_img' | 'tianditu_vec' | 'gaode_img' | 'gaode_vec'
+export type BaseMapType = 'osm_img' | 'tianditu_img' | 'tianditu_vec' | 'gaode_img' | 'gaode_vec'
 
 export interface MapState {
   currentBaseMap: BaseMapType

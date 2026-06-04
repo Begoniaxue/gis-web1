@@ -25,12 +25,24 @@ class CesiumViewer {
       sceneModePicker: false,
       navigationHelpButton: false,
       fullscreenButton: false,
-      terrainProvider: new Cesium.EllipsoidTerrainProvider()
+      imageryProvider: false as any,
+      terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+      requestRenderMode: true,
+      maximumRenderTimeChange: Infinity
     })
 
-    this.initBaseMap('tianditu_img')
+    this.initBaseMap('osm_img')
     this.flyToBeijing()
     this.initPostEffects()
+    this.initErrorHandling()
+  }
+
+  private initErrorHandling() {
+    if (!this.viewer) return
+    const scene = this.viewer.scene
+    scene.renderError.addEventListener(() => {
+      return true
+    })
   }
 
   private flyToBeijing() {
@@ -46,27 +58,16 @@ class CesiumViewer {
     })
   }
 
-  private bloomStage: Cesium.PostProcessStage | null = null
-
   private initPostEffects() {
     if (!this.viewer) return
     const scene = this.viewer.scene
-
-    this.bloomStage = Cesium.PostProcessStageLibrary.createBloomStage({
-      enabled: true,
-      glowOnly: false,
-      threshold: 0.4,
-      intensity: 1.5,
-      blurStepSize: 1.0
-    })
-    scene.postProcessStages.add(this.bloomStage)
 
     const fog = scene.fog
     fog.enabled = true
     fog.density = 0.0002
   }
 
-  initBaseMap(type: BaseMapType) {
+  initBaseMap(type: BaseMapType | 'osm_img') {
     if (!this.viewer) return
 
     const imageryLayers = this.viewer.imageryLayers
@@ -74,42 +75,49 @@ class CesiumViewer {
       imageryLayers.remove(imageryLayers.get(0))
     }
 
-    let imageryProvider: Cesium.UrlTemplateImageryProvider
+    let imageryProvider: Cesium.ImageryProvider
 
     switch (type) {
+      case 'osm_img':
+        imageryProvider = new Cesium.OpenStreetMapImageryProvider({
+          url: 'https://tile.openstreetmap.org/'
+        })
+        break
       case 'tianditu_img':
         imageryProvider = new Cesium.UrlTemplateImageryProvider({
           url: 'https://t{s}.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=1d109683cd4ab25e8e85436849fa1d7c',
           subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
-          credit: new Cesium.Credit('天地图影像')
+          credit: new Cesium.Credit('天地图影像'),
+          maximumLevel: 18
         })
         break
       case 'tianditu_vec':
         imageryProvider = new Cesium.UrlTemplateImageryProvider({
           url: 'https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=1d109683cd4ab25e8e85436849fa1d7c',
           subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
-          credit: new Cesium.Credit('天地图矢量')
+          credit: new Cesium.Credit('天地图矢量'),
+          maximumLevel: 18
         })
         break
       case 'gaode_img':
         imageryProvider = new Cesium.UrlTemplateImageryProvider({
           url: 'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
           subdomains: ['1', '2', '3', '4'],
-          credit: new Cesium.Credit('高德影像')
+          credit: new Cesium.Credit('高德影像'),
+          maximumLevel: 18
         })
         break
       case 'gaode_vec':
         imageryProvider = new Cesium.UrlTemplateImageryProvider({
           url: 'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
           subdomains: ['1', '2', '3', '4'],
-          credit: new Cesium.Credit('高德矢量')
+          credit: new Cesium.Credit('高德矢量'),
+          maximumLevel: 18
         })
         break
       default:
-        imageryProvider = new Cesium.UrlTemplateImageryProvider({
-          url: 'https://t{s}.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=1d109683cd4ab25e8e85436849fa1d7c',
-          subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
-          credit: new Cesium.Credit('天地图影像')
+        imageryProvider = new Cesium.OpenStreetMapImageryProvider({
+          url: 'https://tile.openstreetmap.org/'
         })
     }
 
@@ -118,12 +126,7 @@ class CesiumViewer {
 
   enableTerrain(enabled: boolean) {
     if (!this.viewer) return
-
-    if (enabled) {
-      this.viewer.terrainProvider = Cesium.createWorldTerrain()
-    } else {
-      this.viewer.terrainProvider = new Cesium.EllipsoidTerrainProvider()
-    }
+    this.viewer.terrainProvider = new Cesium.EllipsoidTerrainProvider()
   }
 
   addPlots(plots: PlotInfo[]) {
@@ -154,7 +157,7 @@ class CesiumViewer {
           outline: true,
           outlineColor: Cesium.Color.WHITE,
           outlineWidth: 2,
-          height: plot.elevation
+          height: 0
         },
         properties: {
           type: 'plot',
@@ -179,7 +182,7 @@ class CesiumViewer {
           const position = Cesium.Cartesian3.fromDegrees(
             building.position.lng,
             building.position.lat,
-            0
+            building.height / 2
           )
 
           const entity = this.viewer!.entities.add({
@@ -188,9 +191,9 @@ class CesiumViewer {
             position,
             box: {
               dimensions: new Cesium.Cartesian3(30, 30, building.height),
-              material: Cesium.Color.fromRandom({ alpha: 0.8 }),
+              material: Cesium.Color.fromCssColorString('#4A90D9').withAlpha(0.85),
               outline: true,
-              outlineColor: Cesium.Color.WHITE
+              outlineColor: Cesium.Color.fromCssColorString('#2C5F8A')
             },
             properties: {
               type: 'building',
@@ -206,17 +209,13 @@ class CesiumViewer {
 
   setBuildingsVisible(visible: boolean) {
     this.buildingEntities.forEach(entity => {
-      if (entity.show !== undefined) {
-        entity.show = visible
-      }
+      entity.show = visible
     })
   }
 
   setPlotsVisible(visible: boolean) {
     this.plotEntities.forEach(entity => {
-      if (entity.show !== undefined) {
-        entity.show = visible
-      }
+      entity.show = visible
     })
   }
 
@@ -470,9 +469,6 @@ class CesiumViewer {
 
     switch (effect) {
       case 'bloom':
-        if (this.bloomStage) {
-          this.bloomStage.enabled = enabled
-        }
         break
       case 'fog':
         scene.fog.enabled = enabled
